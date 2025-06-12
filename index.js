@@ -7,6 +7,7 @@ const userRoutes = require('./routes/userRoutes');
 const walletRoutes = require('./routes/walletroutes/walletRoutes');
 const kycRouter = require("./routes/kyc-routes/kyc-routes");
 const mediaRoutes = require('./routes/instructor-routes/media-routes')
+const adminRoutes = require('./routes/admin-routes/admin-routes');
 
 dotenv.config();
 
@@ -28,7 +29,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/kyc', kycRouter);
-app.use('/media', mediaRoutes)
+app.use('/admin', adminRoutes);
+app.use('/media', mediaRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
