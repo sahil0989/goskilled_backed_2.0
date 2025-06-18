@@ -3,18 +3,17 @@ const User = require('../models/User');
 const getUserDetails = async (req, res, next) => {
   try {
     const { id } = req.params;
+
     const user = await User.findById(id);
 
     res.status(200).json({
       success: true,
-      data: {
-        user
-      },
+      data: { user },
     });
   } catch (error) {
     next(error);
   }
-}
+};
 
 const userKycDetails = async (req, res) => {
   try {
@@ -146,7 +145,7 @@ const getReferralTree = async (req, res) => {
 
 const getLeaderboardUsers = async (req, res) => {
   try {
-    
+
     const topUsers = await User.aggregate([
       {
         $match: {
@@ -194,11 +193,53 @@ const getLeaderboardUsers = async (req, res) => {
   }
 };
 
+const updateReferral = async (req, res) => {
+  const allUsers = await User.find({}, '_id referredBy');
+  let updates = 0;
+
+  for (const user of allUsers) {
+    const userId = user._id;
+
+    if (!user.referredBy) continue;
+
+    // Level 1
+    const level1User = await User.findById(user.referredBy);
+    if (level1User && !level1User.referralLevels.level1.includes(userId)) {
+      level1User.referralLevels.level1.push(userId);
+      await level1User.save();
+      updates++;
+    }
+
+    // Level 2
+    if (level1User?.referredBy) {
+      const level2User = await User.findById(level1User.referredBy);
+      if (level2User && !level2User.referralLevels.level2.includes(userId)) {
+        level2User.referralLevels.level2.push(userId);
+        await level2User.save();
+        updates++;
+      }
+
+      // Level 3
+      if (level2User?.referredBy) {
+        const level3User = await User.findById(level2User.referredBy);
+        if (level3User && !level3User.referralLevels.level3.includes(userId)) {
+          level3User.referralLevels.level3.push(userId);
+          await level3User.save();
+          updates++;
+        }
+      }
+    }
+  }
+
+  console.log(`Referral levels updated for ${updates} entries.`);
+}
+
 module.exports = {
   getUserDetails,
   getAllUserDetails,
   getReferralTree,
   getLeaderboardUsers,
   checkReferralLink,
-  userKycDetails
+  userKycDetails,
+  updateReferral
 }

@@ -70,6 +70,27 @@ const UserSchema = new mongoose.Schema({
       ref: 'Course'
     }
   ],
+  priceHistory: [
+    {
+      amount: Number,
+      courseType: { type: String, enum: ['skill', 'career'] },
+      purchasedDate: Date,
+      purchasedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // referred user
+    }
+  ],
+  courseHistory: [
+    {
+      serialNo: Number,
+      date: Date,
+      courseType: { type: String, enum: ['skill', 'career'] },
+      courses: [
+        {
+          courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },
+          courseTitle: String
+        }
+      ]
+    }
+  ],
   kycDetails: {
     whatsAppNumber: { type: String },
 

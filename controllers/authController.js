@@ -53,6 +53,7 @@ exports.register = async (req, res, next) => {
     }
 
     await user.save();
+    await updateReferralLevels(user._id, referringUser._id);
 
     return sendResponse(res, 201, true, "User registered successfully. Please verify your mobile number with the OTP sent.", {
       userId: user._id,
@@ -61,6 +62,33 @@ exports.register = async (req, res, next) => {
     next(error);
   }
 };
+
+async function updateReferralLevels(newUserId, referringUserId) {
+  const level1User = await User.findById(referringUserId);
+  if (!level1User) return;
+
+  await User.findByIdAndUpdate(level1User._id, {
+    $addToSet: { 'referralLevels.level1': newUserId }
+  });
+
+  if (level1User.referredBy) {
+    const level2User = await User.findById(level1User.referredBy);
+    if (level2User) {
+      await User.findByIdAndUpdate(level2User._id, {
+        $addToSet: { 'referralLevels.level2': newUserId }
+      });
+
+      if (level2User.referredBy) {
+        const level3User = await User.findById(level2User.referredBy);
+        if (level3User) {
+          await User.findByIdAndUpdate(level3User._id, {
+            $addToSet: { 'referralLevels.level3': newUserId }
+          });
+        }
+      }
+    }
+  }
+}
 
 // ------------------------
 // Verify OTP
