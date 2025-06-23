@@ -1,5 +1,5 @@
 const express = require('express');
-const { getUserDetails, getAllUserDetails, getReferralTree, getLeaderboardUsers, checkReferralLink, userKycDetails, updateReferral } = require('../controllers/userController');
+const { getUserDetails, getAllUserDetails, getReferralTree, getLeaderboardUsers, checkReferralLink, userKycDetails } = require('../controllers/userController');
 const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();

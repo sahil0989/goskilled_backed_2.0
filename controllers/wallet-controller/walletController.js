@@ -113,7 +113,7 @@ const updateWithdrawStatus = async (req, res) => {
 const getAllWithdrawals = async (req, res) => {
     try {
         const withdrawals = await Wallet.find()
-            .populate('userId', 'name email')
+            .populate('userId', 'name email mobileNumber')
             .sort({ requestedAt: -1 });
 
         res.json(withdrawals);
