@@ -155,7 +155,8 @@ const paymentVerify = async (req, res) => {
                         amount: rewardAmount,
                         courseType: payment.courseType,
                         purchasedDate: new Date(),
-                        purchasedBy: user._id
+                        purchasedBy: user._id,
+                        level: level
                     });
                 }
 

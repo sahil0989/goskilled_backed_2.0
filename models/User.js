@@ -75,7 +75,8 @@ const UserSchema = new mongoose.Schema({
       amount: Number,
       courseType: { type: String, enum: ['skill', 'career'] },
       purchasedDate: Date,
-      purchasedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // referred user
+      purchasedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      level: Number
     }
   ],
   courseHistory: [

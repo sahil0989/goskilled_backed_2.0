@@ -1,5 +1,5 @@
 const express = require('express');
-const { getUserDetails, getAllUserDetails, getReferralTree, getLeaderboardUsers, checkReferralLink, userKycDetails } = require('../controllers/userController');
+const { getUserDetails, getAllUserDetails, getReferralTree, getLeaderboardUsers, checkReferralLink, userKycDetails, getUserEarnings, getEarningHistory } = require('../controllers/userController');
 const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -16,5 +16,9 @@ router.get('/referrals/:userId', getReferralTree);
 router.get('/leaderboard', getLeaderboardUsers)
 
 router.get('/check-referrals/:code/:id', checkReferralLink)
+
+router.get('/earning-details/:userId', getUserEarnings)
+
+router.get('/earning-history/:userId', getEarningHistory)
 
 module.exports = router;

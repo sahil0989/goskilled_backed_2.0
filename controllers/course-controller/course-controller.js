@@ -3,59 +3,53 @@ const User = require("../../models/User");
 
 const getAllStudentViewCourses = async (req, res) => {
   try {
-    const {
-      category = [],
-      level = [],
-      primaryLanguage = [],
-      sortBy = "price-lowtohigh",
-    } = req.query;
+    // Extract query parameters as strings
+    const { category = "", level = "", primaryLanguage = "", sortBy = "price-lowtohigh" } = req.query;
 
-    let filters = {};
-    if (category.length) {
-      filters.category = { $in: category.split(",") };
-    }
-    if (level.length) {
-      filters.level = { $in: level.split(",") };
-    }
-    if (primaryLanguage.length) {
-      filters.primaryLanguage = { $in: primaryLanguage.split(",") };
-    }
+    // Convert comma-separated strings to arrays, or empty arrays if none
+    const categories = category ? category.split(",") : [];
+    const levels = level ? level.split(",") : [];
+    const languages = primaryLanguage ? primaryLanguage.split(",") : [];
 
+    // Build filters object conditionally
+    const filters = {};
+    if (categories.length) filters.category = { $in: categories };
+    if (levels.length) filters.level = { $in: levels };
+    if (languages.length) filters.primaryLanguage = { $in: languages };
+
+    // Define sorting parameters
     let sortParam = {};
-    switch (sortBy) {
+    switch (sortBy.toLowerCase()) {
       case "price-lowtohigh":
         sortParam.pricing = 1;
-
         break;
       case "price-hightolow":
         sortParam.pricing = -1;
-
         break;
       case "title-atoz":
         sortParam.title = 1;
-
         break;
       case "title-ztoa":
         sortParam.title = -1;
-
         break;
-
       default:
         sortParam.pricing = 1;
         break;
     }
 
+    // Fetch courses with filters and sorting
     const coursesList = await Course.find(filters).sort(sortParam);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
+      message: "Courses fetched successfully",
       data: coursesList,
     });
-  } catch (e) {
-    console.log(e);
-    res.status(500).json({
+  } catch (error) {
+    console.error("Error fetching courses:", error);
+    return res.status(500).json({
       success: false,
-      message: "Some error occured!",
+      message: "Internal server error while fetching courses",
     });
   }
 };
@@ -63,6 +57,11 @@ const getAllStudentViewCourses = async (req, res) => {
 const getStudentViewCourseDetails = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: "Course ID is required" });
+    }
+
     const courseDetails = await Course.findById(id);
 
     if (!courseDetails) {
@@ -73,15 +72,16 @@ const getStudentViewCourseDetails = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
+      message: "Course details fetched successfully",
       data: courseDetails,
     });
-  } catch (e) {
-    console.log(e);
-    res.status(500).json({
+  } catch (error) {
+    console.error("Error fetching course details:", error);
+    return res.status(500).json({
       success: false,
-      message: "Some error occured!",
+      message: "Internal server error while fetching course details",
     });
   }
 };
@@ -90,30 +90,36 @@ const checkCoursePurchaseInfo = async (req, res) => {
   try {
     const { id: courseId, studentId } = req.params;
 
-    // Fetch the user and their enrolledCourses array
-    const student = await User.findOne({ _id: studentId }).select('enrolledCourses');
+    if (!courseId || !studentId) {
+      return res.status(400).json({
+        success: false,
+        message: "Course ID and Student ID are required",
+      });
+    }
+
+    const student = await User.findById(studentId).select("enrolledCourses");
 
     if (!student) {
       return res.status(404).json({
         success: false,
-        message: 'Student not found',
+        message: "Student not found",
       });
     }
 
-    // Check if the courseId exists in enrolledCourses array
-    const isEnrolled = student.enrolledCourses.some(
-      (enrolledCourseId) => enrolledCourseId.toString() === courseId
-    );
+    // Check enrollment in either enrolledCourses or purchasedCourses (if you want)
+    const isEnrolled =
+      (student.enrolledCourses || []).some((course) => course.toString() === courseId);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       enrolled: isEnrolled,
+      message: isEnrolled ? "Student is enrolled in the course" : "Student is not enrolled in the course",
     });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({
+  } catch (error) {
+    console.error("Error checking purchase info:", error);
+    return res.status(500).json({
       success: false,
-      message: 'Some error occurred!',
+      message: "Internal server error while checking purchase info",
     });
   }
 };
@@ -122,6 +128,7 @@ const getAllUserDetails = async (req, res) => {
   try {
     const users = await User.find().select("name mobileNumber referralCode");
 
+    // Use Promise.all to await countDocuments for each user
     const userData = await Promise.all(
       users.map(async (user) => {
         const totalReferrals = await User.countDocuments({ referredBy: user._id });
@@ -134,52 +141,63 @@ const getAllUserDetails = async (req, res) => {
       })
     );
 
-    res.status(200).json(userData);
+    return res.status(200).json({
+      success: true,
+      message: "User details fetched successfully",
+      data: userData,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Something went wrong", error });
+    console.error("Error fetching user details:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while fetching user details",
+    });
   }
-}
+};
 
 const checkEnrolledCourse = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const user = await User.findById(userId);
+    if (!userId) {
+      return res.status(400).json({ enrolled: false, message: "User ID is required" });
+    }
+
+    const user = await User.findById(userId).select("enrolledCourses");
 
     if (!user) {
       return res.status(404).json({
         enrolled: false,
-        message: "User not found"
+        message: "User not found",
       });
     }
 
-    const isEnrolled = user.enrolledCourses && user.enrolledCourses.length > 0;
+    const isEnrolled = Array.isArray(user.enrolledCourses) && user.enrolledCourses.length > 0;
 
     return res.status(200).json({
       enrolled: isEnrolled,
-      message: isEnrolled ? "User is enrolled in at least one course." : "User is not enrolled in any course."
+      message: isEnrolled ? "User is enrolled in at least one course" : "User is not enrolled in any course",
     });
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error("Error checking enrollment:", error);
     return res.status(500).json({
       enrolled: false,
-      error: "Error checking enrollment"
+      message: "Internal server error while checking enrollment",
     });
   }
-}
+};
 
 const clearUserCourses = async (req, res) => {
   try {
     const { userId } = req.params;
 
+    if (!userId) {
+      return res.status(400).json({ success: false, message: "User ID is required" });
+    }
+
     const user = await User.findByIdAndUpdate(
       userId,
-      {
-        $set: {
-          purchasedCourses: [],
-          enrolledCourses: []
-        }
-      },
+      { $set: { purchasedCourses: [], enrolledCourses: [] } },
       { new: true }
     );
 
@@ -187,19 +205,25 @@ const clearUserCourses = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    return res.status(200).json({ success: true, message: "Courses cleared", user });
-  } catch (err) {
-    console.error("Error clearing courses:", err);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+    return res.status(200).json({
+      success: true,
+      message: "User courses cleared successfully",
+      data: user,
+    });
+  } catch (error) {
+    console.error("Error clearing user courses:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while clearing user courses",
+    });
   }
 };
-
 
 module.exports = {
   getAllStudentViewCourses,
   getStudentViewCourseDetails,
   checkCoursePurchaseInfo,
+  getAllUserDetails,
   checkEnrolledCourse,
   clearUserCourses,
-  getAllUserDetails,
 };

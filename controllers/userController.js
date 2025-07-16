@@ -106,7 +106,7 @@ const getReferralTree = async (req, res) => {
     if (!user) return res.status(404).json({ error: "User not found" });
 
     // Fields to return for users and their referrers
-    const selectFields = 'name email mobileNumber referredBy';
+    const selectFields = 'name email mobileNumber referredBy referralCode referralLevels wallet';
 
     // Level 1 referrals
     const level1 = await User.find({ referredBy: user._id })
@@ -193,6 +193,96 @@ const getLeaderboardUsers = async (req, res) => {
   }
 };
 
+const getUserEarnings = async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+        let today = 0;
+        let last7Days = 0;
+        let last30Days = 0;
+
+        user.priceHistory?.forEach(entry => {
+            const entryDate = new Date(entry.purchasedDate);
+
+            if (entryDate >= todayStart) {
+                today += entry.amount;
+            }
+
+            if (entryDate >= weekAgo) {
+                last7Days += entry.amount;
+            }
+
+            if (entryDate >= monthAgo) {
+                last30Days += entry.amount;
+            }
+        });
+
+        return res.status(200).json({
+            success: true,
+            earnings: {
+                today,
+                last7Days,
+                last30Days,
+                totalEarned: user.wallet.totalEarned || 0,
+                currentBalance: user.wallet.balance || 0
+            }
+        });
+
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({
+            success: false,
+            error: "Error fetching user earnings"
+        });
+    }
+};
+
+const getEarningHistory = async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        const user = await User.findById(userId)
+            .populate('priceHistory.purchasedBy', 'name email'); // populate referred user
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        const earningHistory = user.priceHistory.map(entry => ({
+            amount: entry.amount,
+            courseType: entry.courseType,
+            purchasedDate: entry.purchasedDate,
+            referralLevel: entry.level || 'N/A',
+            referredUser: entry.purchasedBy ? {
+                name: entry.purchasedBy.name,
+                email: entry.purchasedBy.email,
+                id: entry.purchasedBy._id
+            } : null
+        }));
+
+        res.status(200).json({
+            success: true,
+            totalEarnings: user.wallet.totalEarned || 0,
+            history: earningHistory
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: "Error fetching earning history" });
+    }
+};
+
 const updateReferral = async (req, res) => {
   const allUsers = await User.find({}, '_id referredBy');
   let updates = 0;
@@ -241,5 +331,7 @@ module.exports = {
   getLeaderboardUsers,
   checkReferralLink,
   userKycDetails,
-  updateReferral
+  updateReferral,
+  getUserEarnings,
+  getEarningHistory
 }
