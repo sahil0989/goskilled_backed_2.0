@@ -66,19 +66,15 @@ const paymentVerify = async (req, res) => {
         const user = payment.user;
 
         if (status === 'approved') {
-            // Set package based on course type
+
             if (payment.courseType === 'skill') {
                 user.purchasedPackages.skillBuilder = true;
             } else if (payment.courseType === 'career') {
                 user.purchasedPackages.careerBooster = true;
-            } else {
-                return res.status(400).json({ error: 'Invalid courseType in payment' });
             }
 
-            // Prepare courses array
             const courses = Array.isArray(payment.course) ? payment.course : [payment.course];
 
-            // Update course history
             user.courseHistory = user.courseHistory || [];
 
             const courseDetails = courses.map(course => ({
@@ -116,57 +112,55 @@ const paymentVerify = async (req, res) => {
                 await course.save();
             }
 
-            // Reward referral chain
+            // Reward referral chain only for valid courseTypes
             const rewardConfig = {
                 skill: [900, 150, 75],
                 career: [1250, 250, 150]
             };
 
             const rewardArray = rewardConfig[payment.courseType];
-            if (!rewardArray) {
-                return res.status(400).json({ error: 'Invalid courseType for reward distribution' });
-            }
+            if (rewardArray) {
+                let currentUser = user;
 
-            let currentUser = user;
+                for (let level = 1; level <= 3; level++) {
+                    if (!currentUser.referredBy) break;
 
-            for (let level = 1; level <= 3; level++) {
-                if (!currentUser.referredBy) break;
+                    const referrer = await User.findById(currentUser.referredBy);
+                    if (!referrer) break;
 
-                const referrer = await User.findById(currentUser.referredBy);
-                if (!referrer) break;
+                    const levelKey = `level${level}`;
+                    if (!referrer.referralLevels) referrer.referralLevels = {};
+                    if (!referrer.referralLevels[levelKey]) referrer.referralLevels[levelKey] = [];
 
-                const levelKey = `level${level}`;
-                if (!referrer.referralLevels) referrer.referralLevels = {};
-                if (!referrer.referralLevels[levelKey]) referrer.referralLevels[levelKey] = [];
+                    if (!referrer.referralLevels[levelKey].includes(user._id)) {
+                        referrer.referralLevels[levelKey].push(user._id);
+                    }
 
-                if (!referrer.referralLevels[levelKey].includes(user._id)) {
-                    referrer.referralLevels[levelKey].push(user._id);
+                    const rewardAmount = rewardArray[level - 1];
+
+                    if (typeof rewardAmount === 'number') {
+                        referrer.wallet.balance += rewardAmount;
+                        referrer.wallet.totalEarned += rewardAmount;
+
+                        // Push price history
+                        referrer.priceHistory = referrer.priceHistory || [];
+                        referrer.priceHistory.push({
+                            amount: rewardAmount,
+                            courseType: payment.courseType,
+                            purchasedDate: new Date(),
+                            purchasedBy: user._id,
+                            level: level
+                        });
+                    }
+
+                    await referrer.save();
+
+                    if (!user.referredLevel) {
+                        user.referredLevel = level;
+                    }
+
+                    currentUser = referrer;
                 }
-
-                const rewardAmount = rewardArray[level - 1];
-
-                if (typeof rewardAmount === 'number') {
-                    referrer.wallet.balance += rewardAmount;
-                    referrer.wallet.totalEarned += rewardAmount;
-
-                    // Push price history
-                    referrer.priceHistory = referrer.priceHistory || [];
-                    referrer.priceHistory.push({
-                        amount: rewardAmount,
-                        courseType: payment.courseType,
-                        purchasedDate: new Date(),
-                        purchasedBy: user._id,
-                        level: level
-                    });
-                }
-
-                await referrer.save();
-
-                if (!user.referredLevel) {
-                    user.referredLevel = level;
-                }
-
-                currentUser = referrer;
             }
 
             await user.save();
@@ -175,10 +169,11 @@ const paymentVerify = async (req, res) => {
             payment.status = 'approved';
             payment.verifiedAt = new Date();
             payment.adminNote = adminNote;
-
         } else if (status === 'rejected') {
+            // 👉 Handle rejected case
             payment.status = 'rejected';
-            payment.adminNote = adminNote;
+            payment.adminNote = adminNote || 'Payment rejected by admin';
+            payment.verifiedAt = new Date();
         } else {
             return res.status(400).json({ error: 'Invalid status value' });
         }
