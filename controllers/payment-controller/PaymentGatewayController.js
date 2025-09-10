@@ -38,8 +38,10 @@ const createOrder = async (req, res) => {
             },
             order_note: `${packageType} Purchase`,
             order_expiry_time: new Date(Date.now() + 0.5 * 60 * 60 * 1000).toISOString(),
-            return_url: `${process.env.FRONTEND_URL}/payment/success?order_id={order_id}`,
-            notify_url: `${process.env.BACKEND_URL}/api/payment/verify`
+            order_meta: {
+                return_url: `${process.env.FRONTEND_URL}/payment/success?order_id={order_id}`,
+                notify_url: `${process.env.BACKEND_URL}/api/payment/verify`
+            },
         });
 
         // Save to DB
