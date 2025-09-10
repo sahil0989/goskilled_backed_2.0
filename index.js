@@ -14,6 +14,7 @@ const studentCourseProgress = require("./routes/course-routes/courseProgress");
 const paymentRoutes = require("./routes/payment-routes/paymentRoutes")
 const blogsRoutes = require('./routes/admin-routes/blogs-routes/blogs-routes')
 const meetingRoutes = require('./routes/admin-routes/meeting-routes/meeting-roues')
+const paymentGateway = require('./routes/payment-routes/paymentGatewayRoutes')
 
 dotenv.config();
 
@@ -40,6 +41,7 @@ app.use('/blogs', blogsRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/user/payment', paymentGateway);
 app.use('/admin/courses', adminCouses);
 app.use("/student/course", studentViewCourseRoutes);
 app.use("/student/course-progress", studentCourseProgress);
