@@ -77,43 +77,57 @@ const createOrder = async (req, res) => {
 // 2️⃣ Verify Payment (Webhook or callback)
 const verifyPayment = async (req, res) => {
     try {
-        const data = req.body; // Cashfree webhook payload
-        const orderId = data?.data?.order?.order_id || req.body.orderId;
-        const txStatus = data?.data?.payment?.payment_status || req.body.txStatus;
-        const transactionId = data?.data?.payment?.cf_payment_id || req.body.transactionId;
-        const paymentMode = data?.data?.payment?.payment_method?.payment_mode || req.body.paymentMode;
+        // const data = req.body; // Cashfree webhook payload
+        // const orderId = data?.data?.order?.order_id || req.body.orderId;
+        // const txStatus = data?.data?.payment?.payment_status || req.body.txStatus;
+        // const transactionId = data?.data?.payment?.cf_payment_id || req.body.transactionId;
+        // const paymentMode = data?.data?.payment?.payment_method?.payment_mode || req.body.paymentMode;
 
-        const payment = await Payment.findOne({ orderId });
-        if (!payment) {
-            return res.status(404).json({ message: "Payment not found" });
+        // const payment = await Payment.findOne({ orderId });
+        // if (!payment) {
+        //     return res.status(404).json({ message: "Payment not found" });
+        // }
+
+        // payment.status = txStatus?.toLowerCase();
+        // payment.transactionId = transactionId;
+        // payment.paymentMethod = paymentMode;
+        // payment.responseData = data;
+        // await payment.save();
+
+        // if (txStatus === "SUCCESS" || txStatus === "PAID") {
+        //     const user = await User.findById(payment.user);
+        //     if (user) {
+        //         const purchasedCourseIds = payment.courses.map(c => c.courseId);
+        //         user.purchasedCourses.push(...purchasedCourseIds);
+        //         user.enrolledCourses.push(...purchasedCourseIds);
+
+        //         if (payment.packageType === "Skill Builder") {
+        //             user.purchasedPackages.skillBuilder = true;
+        //             user.purchasedPackages.careerBooster = false;
+        //         } else if (payment.packageType === "Career Booster") {
+        //             user.purchasedPackages.careerBooster = true;
+        //             user.purchasedPackages.skillBuilder = false;
+        //         }
+
+        //         await user.save();
+        //     }
+        // }
+
+        // return res.status(200).json({ success: true, message: "Payment verified", payment });
+
+        const { orderId } = req.body;
+
+        if (!orderId) {
+            return res.status(400).json({ message: 'Order ID is required' });
         }
 
-        payment.status = txStatus?.toLowerCase();
-        payment.transactionId = transactionId;
-        payment.paymentMethod = paymentMode;
-        payment.responseData = data;
-        await payment.save();
+        console.log(`Verifying payment for order: ${orderId}`);
 
-        if (txStatus === "SUCCESS" || txStatus === "PAID") {
-            const user = await User.findById(payment.user);
-            if (user) {
-                const purchasedCourseIds = payment.courses.map(c => c.courseId);
-                user.purchasedCourses.push(...purchasedCourseIds);
-                user.enrolledCourses.push(...purchasedCourseIds);
+        // Get order details from Cashfree using SDK
+        const cashfreeResponse = await cashfree.PGFetchOrder(orderId);
+        console.log('Cashfree order details:', cashfreeResponse.data);
 
-                if (payment.packageType === "Skill Builder") {
-                    user.purchasedPackages.skillBuilder = true;
-                    user.purchasedPackages.careerBooster = false;
-                } else if (payment.packageType === "Career Booster") {
-                    user.purchasedPackages.careerBooster = true;
-                    user.purchasedPackages.skillBuilder = false;
-                }
-
-                await user.save();
-            }
-        }
-
-        return res.status(200).json({ success: true, message: "Payment verified", payment });
+        return res.status(200).json({ success: true, message: "Payment verified" });
     } catch (error) {
         console.error("Verify Payment Error:", error);
         return res.status(500).json({ success: false, message: "Payment verification failed", error: error.message });
