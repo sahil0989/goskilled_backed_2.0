@@ -1,61 +1,86 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const authRoutes = require('./routes/authRoutes');
-const userRoutes = require('./routes/userRoutes');
-const walletRoutes = require('./routes/walletroutes/walletRoutes');
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const dotenv = require("dotenv");
+const helmet = require("helmet");
+const morgan = require("morgan");
+
+// Routes
+const authRoutes = require("./routes/authRoutes");
+const userRoutes = require("./routes/userRoutes");
+const walletRoutes = require("./routes/walletroutes/walletRoutes");
 const kycRouter = require("./routes/kyc-routes/kyc-routes");
 const adminCouses = require("./routes/admin-routes/course-routes/course-routes");
-const mediaRoutes = require('./routes/instructor-routes/media-routes');
-const adminRoutes = require('./routes/admin-routes/admin-routes');
-const studentViewCourseRoutes = require('./routes/course-routes/courseRoutes');
+const mediaRoutes = require("./routes/instructor-routes/media-routes");
+const adminRoutes = require("./routes/admin-routes/admin-routes");
+const studentViewCourseRoutes = require("./routes/course-routes/courseRoutes");
 const studentCourseProgress = require("./routes/course-routes/courseProgress");
-const paymentRoutes = require("./routes/payment-routes/paymentRoutes")
-const blogsRoutes = require('./routes/admin-routes/blogs-routes/blogs-routes')
-const meetingRoutes = require('./routes/admin-routes/meeting-routes/meeting-roues')
-const paymentGateway = require('./routes/payment-routes/paymentGatewayRoutes')
+const paymentRoutes = require("./routes/payment-routes/paymentRoutes");
+const blogsRoutes = require("./routes/admin-routes/blogs-routes/blogs-routes");
+const meetingRoutes = require("./routes/admin-routes/meeting-routes/meeting-roues");
+const paymentGateway = require("./routes/payment-routes/paymentGatewayRoutes");
 
 dotenv.config();
-
 const app = express();
 
-// Middleware
+// ✅ Security & Logging
+app.use(helmet());
+app.use(morgan("combined"));
+
+// ✅ CORS: Restrict in production
+app.use(
+  cors({
+    origin:
+      process.env.NODE_ENV === "production"
+        ? process.env.FRONTEND_URL // only allow your frontend
+        : "*",
+    credentials: true,
+  })
+);
+
+// ✅ For Cashfree webhooks (needs raw body for signature validation)
+app.use(
+  "/user/payment/webhook",
+  express.raw({ type: "application/json" }) // raw body only for webhook
+);
+
+// ✅ For JSON APIs
 app.use(express.json());
-app.use(cors());
 
-// Connect to MongoDB
-require('./config/db');
+// ✅ MongoDB connection
+require("./config/db");
 
-app.get('/', (req, res) => {
-  res.status(200).json("Live URL");
+// Health check
+app.get("/", (req, res) => {
+  res.status(200).json({ status: "ok", message: "Live URL" });
 });
 
 // Routes
-app.use('/api/kyc', kycRouter);
-app.use('/admin', adminRoutes);
-app.use('/media', mediaRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/admin/meetings', meetingRoutes);
-app.use('/blogs', blogsRoutes);
-app.use('/api/user', userRoutes);
-app.use('/api/wallet', walletRoutes);
-app.use('/api/payment', paymentRoutes);
-app.use('/user/payment', paymentGateway);
-app.use('/admin/courses', adminCouses);
+app.use("/api/kyc", kycRouter);
+app.use("/admin", adminRoutes);
+app.use("/media", mediaRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/admin/meetings", meetingRoutes);
+app.use("/blogs", blogsRoutes);
+app.use("/api/user", userRoutes);
+app.use("/api/wallet", walletRoutes);
+app.use("/api/payment", paymentRoutes);
+app.use("/user/payment", paymentGateway);
+app.use("/admin/courses", adminCouses);
 app.use("/student/course", studentViewCourseRoutes);
 app.use("/student/course-progress", studentCourseProgress);
 
-// Error handling middleware
+// ✅ Error handling middleware
 app.use((err, req, res, next) => {
+  console.error("Server Error:", err);
   res.status(500).json({
     success: false,
-    message: 'Server Error',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    message: "Server Error",
+    error: process.env.NODE_ENV === "development" ? err.message : undefined,
   });
 });
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running in ${process.env.NODE_ENV} on port ${PORT}`);
 });
