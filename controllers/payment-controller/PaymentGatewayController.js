@@ -49,10 +49,16 @@ const createOrder = async (req, res) => {
             },
         });
 
+
+        const formattedCourses = courses.map((course) => ({
+            courseId: course.id,
+            courseTitle: course.name,
+        }));
+
         // Save to DB with secret
         const payment = new Payment({
             user: userId,
-            courses,
+            courses: formattedCourses,
             packageType,
             orderId,
             amount: parseFloat(amount).toFixed(2),
