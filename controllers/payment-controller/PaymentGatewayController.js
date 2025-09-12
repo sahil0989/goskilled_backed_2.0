@@ -50,9 +50,12 @@ const createOrder = async (req, res) => {
         });
 
 
-        const formattedCourses = courses.map((course) => ({
+        const coursesArray = Array.isArray(courses) ? courses : [courses];
+
+        const formattedCourses = coursesArray.map((course) => ({
             courseId: course.id,
             courseTitle: course.name,
+            pricing: course.pricing,
         }));
 
         // Save to DB with secret
