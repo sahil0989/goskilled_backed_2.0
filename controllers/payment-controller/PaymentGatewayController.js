@@ -92,10 +92,10 @@ const createOrder = async (req, res) => {
 const handleWebhook = async (req, res) => {
     try {
         const signature = req.headers["x-webhook-signature"];
-        const rawBody = req.body.toString("utf8"); // <-- keep raw
+        const rawBody = req.body; // this is Buffer because of express.raw
 
         const computedSignature = crypto
-            .createHmac("sha256", process.env.CASHFREE_WEBHOOK_SECRET) // use webhook secret
+            .createHmac("sha256", process.env.CASHFREE_WEBHOOK_SECRET) // use webhook secret from dashboard
             .update(rawBody)
             .digest("base64");
 
@@ -104,11 +104,13 @@ const handleWebhook = async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid signature" });
         }
 
-        const eventData = JSON.parse(rawBody); // safe to parse now
+        // ✅ Now safe to parse
+        const eventData = JSON.parse(rawBody.toString("utf8"));
+
         const orderId = eventData.data?.order?.order_id;
         const txStatus = eventData.data?.payment?.payment_status;
 
-        console.log("📩 Webhook received:", orderId, txStatus);
+        console.log("📩 Webhook verified:", orderId, txStatus);
 
         if (!orderId || !txStatus) {
             return res.status(400).json({ message: "Invalid webhook payload" });
