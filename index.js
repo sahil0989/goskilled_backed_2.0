@@ -21,6 +21,10 @@ const meetingRoutes = require("./routes/admin-routes/meeting-routes/meeting-roue
 const paymentGateway = require("./routes/payment-routes/paymentGatewayRoutes");
 
 dotenv.config();
+
+// ✅ MongoDB connection
+require("./config/db");
+
 const app = express();
 
 // ✅ Security & Logging
@@ -38,17 +42,16 @@ app.use(
   })
 );
 
-// ✅ For Cashfree webhooks (needs raw body for signature validation)
-app.use(
-  "/user/payment/webhook",
-  express.raw({ type: "application/json" }) // raw body only for webhook
-);
-
-// ✅ For JSON APIs
-app.use(express.json());
-
-// ✅ MongoDB connection
-require("./config/db");
+// Body parser & capturing raw body for webhook verification
+app.use(express.json({
+  limit: "5mb",
+  verify: (req, res, buf, encoding) => {
+    // If this is Cashfree webhook route, save rawBody buffer
+    if (req.originalUrl === "/user/payment/webhook") {
+      req.rawBody = buf;
+    }
+  }
+}))
 
 // Health check
 app.get("/", (req, res) => {
