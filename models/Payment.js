@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const PAYMENT_STATUS = require("../constants/paymentStatus")
 
 const PaymentSchema = new mongoose.Schema({
   user: {
@@ -26,7 +27,7 @@ const PaymentSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: Object.values(PAYMENT_STATUS),
-    default: PAYMENT_STATUS.PENDING
+    default: PAYMENT_STATUS.PENDING,
   },
   responseData: { type: Object }, // store raw response
 }, {

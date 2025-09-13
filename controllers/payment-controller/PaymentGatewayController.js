@@ -6,12 +6,7 @@ const crypto = require("crypto");
 const { Cashfree, CFEnvironment } = require("cashfree-pg");
 
 // Constants / Enums
-const PAYMENT_STATUS = {
-  PENDING: "pending",
-  SUCCESS: "success",
-  FAILED: "failed",
-  REFUNDED: "refunded",
-};
+const PAYMENT_STATUS = require("../../constants/paymentStatus")
 
 // Setup Cashfree
 const cashfree = new Cashfree(
