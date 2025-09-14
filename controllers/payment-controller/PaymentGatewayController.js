@@ -114,7 +114,6 @@ const handleWebhook = async (req, res) => {
         }
 
         const eventData = JSON.parse(payloadString);
-
         const orderId = eventData.data?.order?.order_id;
         const txStatus = eventData.data?.payment?.payment_status;
 
@@ -135,54 +134,51 @@ const handleWebhook = async (req, res) => {
             return res.sendStatus(200);
         }
 
-        console.log("Event Data: ", eventData.data?.payment?.payment_method?.payment_mode)
-        console.log("PaymentMethod Data: ", paymentRecord.paymentMethod)
-
-        // Update
+        // Update payment record
         paymentRecord.status = txStatus.toLowerCase();
-        paymentRecord.transactionId = eventData.data?.payment?.cf_payment_id || paymentRecord.transactionId;
-        paymentRecord.paymentMethod = eventData.data?.payment?.payment_method?.payment_mode || paymentRecord.paymentMethod;
+        paymentRecord.transactionId =
+            eventData.data?.payment?.cf_payment_id || paymentRecord.transactionId;
+        paymentRecord.paymentMethod =
+            eventData.data?.payment?.payment_method?.payment_mode ||
+            paymentRecord.paymentMethod;
         paymentRecord.responseData = eventData;
         await paymentRecord.save();
 
-        // Grant access on success
+        // ✅ Grant access on success (atomic update, no VersionError)
         if (["SUCCESS", "PAID"].includes(txStatus.toUpperCase())) {
-            const user = await User.findById(paymentRecord.user);
-            if (user) {
+            const purchasedCourseIds = paymentRecord.courses.map((c) =>
+                c.courseId.toString()
+            );
 
-                // avoid duplicates
-                const purchasedCourseIds = paymentRecord.courses.map(c => c.courseId.toString());
-                const existingCourseIds = user.purchasedCourses.map(c => c.toString());
+            const updateOps = {
+                $addToSet: {
+                    purchasedCourses: { $each: purchasedCourseIds },
+                    enrolledCourses: { $each: purchasedCourseIds },
+                },
+            };
 
-                const newCourses = purchasedCourseIds.filter(id => !existingCourseIds.includes(id));
-
-                // merge and make unique
-                user.purchasedCourses = [...new Set([...user.purchasedCourses.map(id => id.toString()), ...newCourses])];
-                user.enrolledCourses = [...new Set([...user.enrolledCourses.map(id => id.toString()), ...newCourses])];
-
-
-                // Handle package flags
-                if (paymentRecord.packageType === "Skill Builder") {
-                    user.purchasedPackages = {
-                        skillBuilder: true,
-                        careerBooster: false,
-                    };
-                } else if (paymentRecord.packageType === "Career Booster") {
-                    user.purchasedPackages = {
-                        careerBooster: true,
-                        skillBuilder: false,
-                    };
-                }
-
-                await user.save();
-                console.log(`✅ User ${user._id} updated with unique purchased courses`);
+            // Handle package flags
+            if (paymentRecord.packageType === "Skill Builder") {
+                updateOps.$set = {
+                    purchasedPackages: { skillBuilder: true, careerBooster: false },
+                };
+            } else if (paymentRecord.packageType === "Career Booster") {
+                updateOps.$set = {
+                    purchasedPackages: { careerBooster: true, skillBuilder: false },
+                };
             }
+
+            await User.findByIdAndUpdate(paymentRecord.user, updateOps);
+
+            console.log(
+                `✅ User ${paymentRecord.user} updated with unique purchased courses`
+            );
         }
 
         return res.sendStatus(200);
     } catch (error) {
         console.error("❌ Webhook Error:", error);
-        // for internal failure, better to return 500 so Cashfree will retry
+        // Return 500 so Cashfree retries if something fails internally
         return res.sendStatus(500);
     }
 };
