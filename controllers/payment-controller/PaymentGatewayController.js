@@ -1,7 +1,6 @@
 const Payment = require("../../models/Payment");
 const User = require("../../models/User");
 const crypto = require("crypto");
-const mongoose = require("mongoose");
 const { Cashfree, CFEnvironment } = require("cashfree-pg");
 
 // Constants / Enums
@@ -50,7 +49,6 @@ const createOrder = async (req, res) => {
             order_meta: {
                 return_url: `${process.env.FRONTEND_URL}/payment/success?order_id={order_id}`,
                 notify_url: `${process.env.BACKEND_URL}/user/payment/webhook`,
-                payment_methods: "cc,dc,upi"
             },
         });
 
@@ -137,31 +135,10 @@ const handleWebhook = async (req, res) => {
             return res.sendStatus(200);
         }
 
-        const extractPaymentMethod = (paymentMethodObj) => {
-            if (!paymentMethodObj) return "UNKNOWN";
-
-            if (paymentMethodObj.card) {
-                const card = paymentMethodObj.card;
-                return `${card.card_network.toUpperCase()} ${card.card_type} (${card.card_bank_name})`;
-            }
-            if (paymentMethodObj.upi) return "UPI";
-            if (paymentMethodObj.netbanking) return "NetBanking";
-            if (paymentMethodObj.wallet) return "Wallet";
-            if (paymentMethodObj.paylater) return "PayLater";
-
-            return "UNKNOWN";
-        };
-
-        console.log("Payment Record: ", paymentRecord);
-
-        console.log("Event Data: ", eventData.data?.payment?.payment_method);
-
         // Update
         paymentRecord.status = txStatus.toLowerCase();
         paymentRecord.transactionId = eventData.data?.payment?.cf_payment_id || paymentRecord.transactionId;
-        paymentRecord.paymentMethod = extractPaymentMethod(
-            eventData.data?.payment?.payment_method
-        );
+        paymentRecord.paymentMethod = eventData.data?.payment?.payment_method?.payment_mode || paymentRecord.paymentMethod;
         paymentRecord.responseData = eventData;
         await paymentRecord.save();
 
@@ -171,25 +148,7 @@ const handleWebhook = async (req, res) => {
             if (user) {
                 // Get purchased course IDs from this payment
                 const purchasedCourseIds = paymentRecord.courses.map(c => c.courseId.toString());
-
-                if (user.purchasedCourses.length === 0) {
-
-                    console.log("This is user first purchase....")
-
-                    // Handle package flags
-                    if (paymentRecord.packageType === "Skill Builder") {
-                        user.purchasedPackages = {
-                            skillBuilder: true,
-                            careerBooster: false,
-                        };
-                    } else if (paymentRecord.packageType === "Career Booster") {
-                        user.purchasedPackages = {
-                            careerBooster: true,
-                            skillBuilder: false,
-                        };
-                    }
-                }
-
+                
                 // Deduplicate both arrays using Set
                 user.purchasedCourses = Array.from(
                     new Set([...user.purchasedCourses.map(id => id.toString()), ...purchasedCourseIds])
@@ -199,7 +158,21 @@ const handleWebhook = async (req, res) => {
                     new Set([...user.enrolledCourses.map(id => id.toString()), ...purchasedCourseIds])
                 ).map(id => mongoose.Types.ObjectId(id));
 
+                // Handle package flags
+                if (paymentRecord.packageType === "Skill Builder") {
+                    user.purchasedPackages = {
+                        skillBuilder: true,
+                        careerBooster: false,
+                    };
+                } else if (paymentRecord.packageType === "Career Booster") {
+                    user.purchasedPackages = {
+                        careerBooster: true,
+                        skillBuilder: false,
+                    };
+                }
+
                 await user.save();
+                console.log(`✅ User ${user._id} updated with unique purchased courses`);
             }
         }
 
