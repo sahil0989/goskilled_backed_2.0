@@ -11,7 +11,7 @@ const PaymentSchema = new mongoose.Schema({
     {
       courseId: { type: mongoose.Schema.Types.ObjectId, ref: "Course" },
       courseTitle: String,
-      pricing: Number
+      courseType: String
     }
   ],
   packageType: {
