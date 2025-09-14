@@ -1,6 +1,7 @@
 const Payment = require("../../models/Payment");
 const User = require("../../models/User");
 const crypto = require("crypto");
+const mongoose = require('mongoose')
 const { Cashfree, CFEnvironment } = require("cashfree-pg");
 
 // Constants / Enums
@@ -134,6 +135,9 @@ const handleWebhook = async (req, res) => {
             console.log(`ℹ️ Payment ${orderId} already processed. Skipping...`);
             return res.sendStatus(200);
         }
+
+        console.log("Event Data: ", eventData.data?.payment?.payment_method?.payment_mode)
+        console.log("PaymentMethod Data: ", paymentRecord.paymentMethod)
 
         // Update
         paymentRecord.status = txStatus.toLowerCase();
