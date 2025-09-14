@@ -149,11 +149,12 @@ const handleWebhook = async (req, res) => {
         if (["SUCCESS", "PAID"].includes(txStatus.toUpperCase())) {
             const user = await User.findById(paymentRecord.user);
             if (user) {
-                // Get purchased course IDs from this payment
-                const purchasedCourseIds = paymentRecord.courses.map(c => c.courseId.toString());
 
                 // avoid duplicates
-                const newCourses = purchasedCourseIds.filter(id => !user.purchasedCourses.includes(id));
+                const purchasedCourseIds = paymentRecord.courses.map(c => c.courseId.toString());
+                const existingCourseIds = user.purchasedCourses.map(c => c.toString());
+
+                const newCourses = purchasedCourseIds.filter(id => !existingCourseIds.includes(id));
                 user.purchasedCourses.push(...newCourses);
                 user.enrolledCourses.push(...newCourses);
 
