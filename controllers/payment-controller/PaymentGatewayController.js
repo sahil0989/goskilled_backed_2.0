@@ -155,8 +155,11 @@ const handleWebhook = async (req, res) => {
                 const existingCourseIds = user.purchasedCourses.map(c => c.toString());
 
                 const newCourses = purchasedCourseIds.filter(id => !existingCourseIds.includes(id));
-                user.purchasedCourses.push(...newCourses);
-                user.enrolledCourses.push(...newCourses);
+
+                // merge and make unique
+                user.purchasedCourses = [...new Set([...user.purchasedCourses.map(id => id.toString()), ...newCourses])];
+                user.enrolledCourses = [...new Set([...user.enrolledCourses.map(id => id.toString()), ...newCourses])];
+
 
                 // Handle package flags
                 if (paymentRecord.packageType === "Skill Builder") {
