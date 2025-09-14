@@ -1,6 +1,7 @@
 const Payment = require("../../models/Payment");
 const User = require("../../models/User");
 const crypto = require("crypto");
+const mongoose = require("mongoose");
 const { Cashfree, CFEnvironment } = require("cashfree-pg");
 
 // Constants / Enums
@@ -150,6 +151,10 @@ const handleWebhook = async (req, res) => {
 
             return "UNKNOWN";
         };
+
+        console.log("Payment Record: ", paymentRecord);
+
+        console.log("Event Data: ", eventData.data?.payment?.payment_method);
 
         // Update
         paymentRecord.status = txStatus.toLowerCase();
