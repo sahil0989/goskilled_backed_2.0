@@ -78,7 +78,7 @@ const createOrder = async (req, res) => {
             order_note: `${packageType} Purchase`,
             order_expiry_time: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
             order_meta: {
-                return_url: `${process.env.FRONTEND_URL}/payment/success?order_id={order_id}`,
+                return_url: `${process.env.FRONTEND_URL}/payment/verify?order_id={order_id}`,
                 notify_url: `${process.env.BACKEND_URL}/user/payment/webhook`,
                 payment_methods: "cc,dc,upi,nb"
             },
