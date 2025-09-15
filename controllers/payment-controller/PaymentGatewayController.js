@@ -128,7 +128,7 @@ const handleWebhook = async (req, res) => {
             return res.status(404).json({ success: false, message: "Payment record not found" });
         }
 
-        console.log("💳 Payment Method: ", paymentRecord.responseData);
+        console.log("💳 Payment Method: ", eventData.data);
 
         // Idempotency: skip if already success
         if (paymentRecord.status === PAYMENT_STATUS.SUCCESS) {
