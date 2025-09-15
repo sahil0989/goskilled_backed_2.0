@@ -23,6 +23,37 @@ function generateOrderSecret(orderId, userId) {
         .digest("hex");
 }
 
+// Helper: for payment extraction such as upi, net_banking and card
+function extractPaymentMethod(method) {
+  if (!method) return { type: "UNKNOWN", details: null };
+
+  if (method.card) {
+    return {
+      type: "CARD",
+      network: method.card.card_network,
+      bank: method.card.card_bank_name,
+      number: method.card.card_number,
+    };
+  }
+
+  if (method.netbanking) {
+    return {
+      type: "NETBANKING",
+      bank: method.netbanking.netbanking_bank_name,
+      code: method.netbanking.netbanking_bank_code,
+    };
+  }
+
+  if (method.upi) {
+    return {
+      type: "UPI",
+      vpa: method.upi.upi_id,
+    };
+  }
+
+  return { type: "UNKNOWN", details: null };
+}
+
 // 1️⃣ Create Order
 const createOrder = async (req, res) => {
     try {
@@ -141,9 +172,9 @@ const handleWebhook = async (req, res) => {
         paymentRecord.status = txStatus.toLowerCase();
         paymentRecord.transactionId =
             eventData.data?.payment?.cf_payment_id || paymentRecord.transactionId;
-        paymentRecord.paymentMethod =
-            eventData.data?.payment?.payment_method?.payment_mode ||
-            paymentRecord.paymentMethod;
+        paymentRecord.paymentMethod = extractPaymentMethod(
+            eventData.data?.payment?.payment_method
+        );
         paymentRecord.responseData = eventData;
         await paymentRecord.save();
 
@@ -172,10 +203,6 @@ const handleWebhook = async (req, res) => {
             }
 
             await User.findByIdAndUpdate(paymentRecord.user, updateOps);
-
-            console.log(
-                `✅ User ${paymentRecord.user} updated with unique purchased courses`
-            );
         }
 
         return res.sendStatus(200);
@@ -211,9 +238,11 @@ const verifyPayment = async (req, res) => {
             console.warn(`⚠️ Amount mismatch during manual verify for order ${orderId}`);
         }
 
+        const methodDetails = extractPaymentMethod(latestPayment.payment_method);
+
         paymentRecord.status = txStatus.toLowerCase();
         paymentRecord.transactionId = transactionId;
-        paymentRecord.paymentMethod = paymentMethod;
+        paymentRecord.paymentMethod = methodDetails;
         paymentRecord.responseData = {
             order: orderResponse.data,
             payments: paymentsResponse.data

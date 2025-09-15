@@ -19,19 +19,25 @@ const PaymentSchema = new mongoose.Schema({
     enum: ["Skill Builder", "Career Booster"],
     required: true
   },
-  orderId: { type: String, required: true, unique: true }, // make unique
+  orderId: { type: String, required: true, unique: true },
   transactionId: { type: String },
   amount: { type: Number, required: true },
   currency: { type: String, default: "INR" },
-  paymentMethod: { type: String }, // UPI, NetBanking, Card etc.
+
+  paymentMethod: {
+    type: Object,
+    default: {}
+  },
+
   status: {
     type: String,
     enum: Object.values(PAYMENT_STATUS),
     default: PAYMENT_STATUS.PENDING,
   },
-  responseData: { type: Object }, // store raw response
+  responseData: { type: Object },
 }, {
   timestamps: true
 });
+
 
 module.exports = mongoose.model("Payment", PaymentSchema);
