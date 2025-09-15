@@ -128,6 +128,8 @@ const handleWebhook = async (req, res) => {
             return res.status(404).json({ success: false, message: "Payment record not found" });
         }
 
+        console.log("💳 Payment Method: ", paymentRecord.responseData.payments[0].payment_group);
+
         // Idempotency: skip if already success
         if (paymentRecord.status === PAYMENT_STATUS.SUCCESS) {
             console.log(`ℹ️ Payment ${orderId} already processed. Skipping...`);
