@@ -49,6 +49,7 @@ const createOrder = async (req, res) => {
             order_meta: {
                 return_url: `${process.env.FRONTEND_URL}/payment/success?order_id={order_id}`,
                 notify_url: `${process.env.BACKEND_URL}/user/payment/webhook`,
+                payment_methods: "cc,dc,upi,nb"
             },
         });
 
