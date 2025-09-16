@@ -189,7 +189,6 @@ const handleWebhook = async (req, res) => {
             const updateOps = {
                 $addToSet: {
                     purchasedCourses: { $each: purchasedCourseIds },
-                    // enrolledCourses: { $each: purchasedCourseIds },
                 },
             };
 
@@ -289,31 +288,9 @@ const getUserPayments = async (req, res) => {
     }
 };
 
-const updateAllUsers = async (req, res) => {
-    try {
-        const { packageType } = req.body;
-
-        // Validate packageType against enum
-        if (!["Skill Builder", "Career Booster", "No Course"].includes(packageType)) {
-            return res.status(400).json({ success: false, message: "Invalid packageType" });
-        }
-
-        const result = await User.updateMany({}, { $set: { packageType } });
-
-        res.status(200).json({
-            success: true,
-            message: `All users updated to packageType: ${packageType}`,
-            modifiedCount: result.modifiedCount,
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
-}
-
 module.exports = {
     createOrder,
     handleWebhook,
     verifyPayment,
-    getUserPayments,
-    updateAllUsers
+    getUserPayments
 };
