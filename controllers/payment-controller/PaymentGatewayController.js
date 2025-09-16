@@ -177,7 +177,8 @@ const handleWebhook = async (req, res) => {
         await paymentRecord.save();
 
         const userData = await User.findById(paymentRecord.user);
-
+        console.log("fetching.....");
+        console.log("User", userData);
         console.log("User Data", userData?.packageType)
 
         // ✅ Grant access on success (atomic update, no VersionError)
