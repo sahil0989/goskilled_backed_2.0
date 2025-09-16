@@ -6,7 +6,8 @@ const {
   createOrder,
   handleWebhook,
   verifyPayment,
-  getUserPayments
+  getUserPayments,
+  updateAllUsers
 } = require("../../controllers/payment-controller/PaymentGatewayController");
 
 // Route: Create order (user facing)
@@ -20,5 +21,7 @@ router.post("/webhook", handleWebhook);
 
 // Route: Get user payment history
 router.get("/history/:userId", getUserPayments);
+
+router.put("/update-all", updateAllUsers)
 
 module.exports = router;

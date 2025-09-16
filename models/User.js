@@ -70,6 +70,11 @@ const UserSchema = new mongoose.Schema({
       ref: 'Course'
     }
   ],
+  packageType: {
+    type: String,
+    enum: ["Skill Builder", "Career Booster", "No Course"],
+    default: "No Course"
+  },
   priceHistory: [
     {
       amount: Number,

@@ -25,33 +25,33 @@ function generateOrderSecret(orderId, userId) {
 
 // Helper: for payment extraction such as upi, net_banking and card
 function extractPaymentMethod(method) {
-  if (!method) return { type: "UNKNOWN", details: null };
+    if (!method) return { type: "UNKNOWN", details: null };
 
-  if (method.card) {
-    return {
-      type: "CARD",
-      network: method.card.card_network,
-      bank: method.card.card_bank_name,
-      number: method.card.card_number,
-    };
-  }
+    if (method.card) {
+        return {
+            type: "CARD",
+            network: method.card.card_network,
+            bank: method.card.card_bank_name,
+            number: method.card.card_number,
+        };
+    }
 
-  if (method.netbanking) {
-    return {
-      type: "NETBANKING",
-      bank: method.netbanking.netbanking_bank_name,
-      code: method.netbanking.netbanking_bank_code,
-    };
-  }
+    if (method.netbanking) {
+        return {
+            type: "NETBANKING",
+            bank: method.netbanking.netbanking_bank_name,
+            code: method.netbanking.netbanking_bank_code,
+        };
+    }
 
-  if (method.upi) {
-    return {
-      type: "UPI",
-      vpa: method.upi.upi_id,
-    };
-  }
+    if (method.upi) {
+        return {
+            type: "UPI",
+            vpa: method.upi.upi_id,
+        };
+    }
 
-  return { type: "UNKNOWN", details: null };
+    return { type: "UNKNOWN", details: null };
 }
 
 // 1️⃣ Create Order
@@ -160,8 +160,6 @@ const handleWebhook = async (req, res) => {
             return res.status(404).json({ success: false, message: "Payment record not found" });
         }
 
-        console.log("💳 Payment Method: ", eventData.data.payment.payment_group);
-
         // Idempotency: skip if already success
         if (paymentRecord.status === PAYMENT_STATUS.SUCCESS) {
             console.log(`ℹ️ Payment ${orderId} already processed. Skipping...`);
@@ -178,6 +176,10 @@ const handleWebhook = async (req, res) => {
         paymentRecord.responseData = eventData;
         await paymentRecord.save();
 
+        const userData = await User.findById(paymentRecord.user);
+
+        console.log("User Data", userData?.packageType)
+
         // ✅ Grant access on success (atomic update, no VersionError)
         if (["SUCCESS", "PAID"].includes(txStatus.toUpperCase())) {
             const purchasedCourseIds = paymentRecord.courses.map((c) =>
@@ -187,7 +189,7 @@ const handleWebhook = async (req, res) => {
             const updateOps = {
                 $addToSet: {
                     purchasedCourses: { $each: purchasedCourseIds },
-                    enrolledCourses: { $each: purchasedCourseIds },
+                    // enrolledCourses: { $each: purchasedCourseIds },
                 },
             };
 
@@ -287,9 +289,31 @@ const getUserPayments = async (req, res) => {
     }
 };
 
+const updateAllUsers = async (req, res) => {
+    try {
+        const { packageType } = req.body;
+
+        // Validate packageType against enum
+        if (!["Skill Builder", "Career Booster", "No Course"].includes(packageType)) {
+            return res.status(400).json({ success: false, message: "Invalid packageType" });
+        }
+
+        const result = await User.updateMany({}, { $set: { packageType } });
+
+        res.status(200).json({
+            success: true,
+            message: `All users updated to packageType: ${packageType}`,
+            modifiedCount: result.modifiedCount,
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+}
+
 module.exports = {
     createOrder,
     handleWebhook,
     verifyPayment,
-    getUserPayments
+    getUserPayments,
+    updateAllUsers
 };
