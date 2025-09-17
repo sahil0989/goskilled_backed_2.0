@@ -186,6 +186,58 @@ const handleWebhook = async (req, res) => {
             if (user.packageType === "No Course") {
                 user.packageType = paymentRecord.packageType;
                 await user.save();
+
+                const rewardConfig = {
+                    "Skill Builder": [900, 150, 75],
+                    "Career Booster": [1250, 250, 150],
+                };
+
+                const rewardArray = rewardConfig[paymentRecord.packageType];
+                if (rewardArray) {
+                    let currentUser = user;
+
+                    for (let level = 1; level <= 3; level++) {
+                        if (!currentUser.referredBy) break;
+
+                        const referrer = await User.findById(currentUser.referredBy);
+                        if (!referrer) break;
+
+                        const levelKey = `level${level}`;
+                        if (!referrer.referralLevels) referrer.referralLevels = {};
+                        if (!referrer.referralLevels[levelKey])
+                            referrer.referralLevels[levelKey] = [];
+
+                        if (!referrer.referralLevels[levelKey].includes(user._id)) {
+                            referrer.referralLevels[levelKey].push(user._id);
+                        }
+
+                        const rewardAmount = rewardArray[level - 1];
+
+                        if (typeof rewardAmount === "number" && rewardAmount > 0) {
+                            referrer.wallet = referrer.wallet || { balance: 0, totalEarned: 0 };
+                            referrer.wallet.balance += rewardAmount;
+                            referrer.wallet.totalEarned += rewardAmount;
+
+                            referrer.priceHistory = referrer.priceHistory || [];
+                            referrer.priceHistory.push({
+                                amount: rewardAmount,
+                                courseType: paymentRecord.packageType,
+                                purchasedDate: new Date(),
+                                purchasedBy: user._id,
+                                level: level,
+                            });
+                        }
+
+                        await referrer.save();
+
+                        if (!user.referralLevels) {
+                            user.referralLevels = level;
+                            await user.save();
+                        }
+
+                        currentUser = referrer;
+                    }
+                }
             }
 
             for (const course of courses) {
