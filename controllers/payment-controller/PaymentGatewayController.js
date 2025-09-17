@@ -1,4 +1,5 @@
 const Payment = require("../../models/Payment");
+const Course = require("../../models/Course")
 const User = require("../../models/User");
 const crypto = require("crypto");
 const { Cashfree, CFEnvironment } = require("cashfree-pg");
@@ -176,17 +177,40 @@ const handleWebhook = async (req, res) => {
         paymentRecord.responseData = eventData;
         await paymentRecord.save();
 
-        // const userData = await User.findById(paymentRecord.user);
-        // console.log("fetching.....");
-        // console.log("User", userData);
-        // console.log("User Data", userData?.packageType)
-
         // ✅ Grant access on success (atomic update, no VersionError)
         if (["SUCCESS", "PAID"].includes(txStatus.toUpperCase())) {
 
             const courses = Array.isArray(paymentRecord.courses) ? paymentRecord.courses : [paymentRecord.courses];
+            const user = await User.findById(paymentRecord.user);
 
-            console.log("🗂️ Courses: ", courses);
+            if (user.packageType === "No Course") {
+                user.packageType = paymentRecord.packageType;
+                await user.save();
+            }
+
+            for (const course of courses) {
+                const currentCourse = await Course.findById(course.courseId);
+                if (!currentCourse) {
+                    console.warn(`Course not found: ${course.courseId}`);
+                    continue;
+                }
+
+                const alreadyAdded = currentCourse.students.some(
+                    s => s.studentId.toString() === paymentRecord.user.toString()
+                );
+
+
+                if (!alreadyAdded) {
+                    currentCourse.students.push({
+                        studentId: paymentRecord?.user,
+                        studentName: user?.name,
+                        studentEmail: user?.email,
+                        paidAmount: paymentRecord?.amount,
+                    });
+                }
+
+                await currentCourse.save();
+            }
 
             const purchasedCourseIds = paymentRecord.courses.map((c) =>
                 c.courseId.toString()
