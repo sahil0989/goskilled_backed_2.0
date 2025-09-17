@@ -172,7 +172,7 @@ const checkEnrolledCourse = async (req, res) => {
       });
     }
 
-    const isEnrolled = Array.isArray(user.enrolledCourses) && user.enrolledCourses.length > 0;
+    const isEnrolled = Array.isArray(user.purchasedCourses) && user.purchasedCourses.length > 0;
 
     return res.status(200).json({
       enrolled: isEnrolled,
