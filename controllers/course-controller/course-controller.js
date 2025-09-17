@@ -97,7 +97,7 @@ const checkCoursePurchaseInfo = async (req, res) => {
       });
     }
 
-    const student = await User.findById(studentId).select("enrolledCourses");
+    const student = await User.findById(studentId).select("purchasedCourses");
 
     if (!student) {
       return res.status(404).json({
@@ -106,9 +106,9 @@ const checkCoursePurchaseInfo = async (req, res) => {
       });
     }
 
-    // Check enrollment in either enrolledCourses or purchasedCourses (if you want)
+    // Check enrollment in or purchasedCourses (if you want)
     const isEnrolled =
-      (student.enrolledCourses || []).some((course) => course.toString() === courseId);
+      (student.purchasedCourses || []).some((course) => course.toString() === courseId);
 
     return res.status(200).json({
       success: true,
@@ -163,7 +163,7 @@ const checkEnrolledCourse = async (req, res) => {
       return res.status(400).json({ enrolled: false, message: "User ID is required" });
     }
 
-    const user = await User.findById(userId).select("enrolledCourses");
+    const user = await User.findById(userId).select("purchasedCourses");
 
     if (!user) {
       return res.status(404).json({
@@ -197,7 +197,7 @@ const clearUserCourses = async (req, res) => {
 
     const user = await User.findByIdAndUpdate(
       userId,
-      { $set: { purchasedCourses: [], enrolledCourses: [] } },
+      { $set: { purchasedCourses: [] } },
       { new: true }
     );
 
