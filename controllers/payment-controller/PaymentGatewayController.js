@@ -176,13 +176,18 @@ const handleWebhook = async (req, res) => {
         paymentRecord.responseData = eventData;
         await paymentRecord.save();
 
-        const userData = await User.findById(paymentRecord.user);
-        console.log("fetching.....");
-        console.log("User", userData);
-        console.log("User Data", userData?.packageType)
+        // const userData = await User.findById(paymentRecord.user);
+        // console.log("fetching.....");
+        // console.log("User", userData);
+        // console.log("User Data", userData?.packageType)
 
         // ✅ Grant access on success (atomic update, no VersionError)
         if (["SUCCESS", "PAID"].includes(txStatus.toUpperCase())) {
+
+            const courses = Array.isArray(paymentRecord.courses) ? paymentRecord.courses : [paymentRecord.courses];
+
+            console.log("🗂️ Courses: ", courses);
+
             const purchasedCourseIds = paymentRecord.courses.map((c) =>
                 c.courseId.toString()
             );
