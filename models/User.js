@@ -78,10 +78,11 @@ const UserSchema = new mongoose.Schema({
   priceHistory: [
     {
       amount: Number,
-      courseType: { type: String, enum: ['skill', 'career'] },
+      courseType: { type: String, enum: ["Skill Builder", "Career Booster"] },
       purchasedDate: Date,
-      purchasedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-      level: Number
+      purchasedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      level: Number,
+      paymentId: { type: mongoose.Schema.Types.ObjectId, ref: "Payment" } // ✅ new field
     }
   ],
   courseHistory: [
