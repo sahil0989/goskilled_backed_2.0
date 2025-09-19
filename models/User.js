@@ -89,7 +89,7 @@ const UserSchema = new mongoose.Schema({
     {
       serialNo: Number,
       date: Date,
-      courseType: { type: String, enum: ['skill', 'career'] },
+      courseType: { type: String, enum: ["Skill Builder", "Career Booster"] },
       courses: [
         {
           courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },
