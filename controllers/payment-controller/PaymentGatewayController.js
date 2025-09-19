@@ -55,6 +55,17 @@ function extractPaymentMethod(method) {
     return { type: "UNKNOWN", details: null };
 }
 
+function normalizeCourseType(type) {
+    if (!type) return null;
+    const map = {
+        skill: "Skill Builder",
+        career: "Career Booster",
+        "Skill Builder": "Skill Builder",
+        "Career Booster": "Career Booster"
+    };
+    return map[type] || null;
+}
+
 // 1️⃣ Create Order
 const createOrder = async (req, res) => {
     try {
@@ -265,7 +276,15 @@ const handleWebhook = async (req, res) => {
 
                         if (typeof rewardAmount === "number" && rewardAmount > 0) {
                             // ✅ use the same values your schema expects
-                            const courseTypeEnum = paymentRecord.packageType; // "Skill Builder" or "Career Booster"
+
+                            const courseTypeEnum = normalizeCourseType(paymentRecord.packageType);
+
+                            console.log(`🤔 Couse Enum: ${courseTypeEnum}`);
+
+                            if (!courseTypeEnum) {
+                                console.error("❌ Invalid courseType:", paymentRecord.packageType);
+                                return res.status(400).json({ success: false, message: "Invalid courseType" });
+                            }
 
                             // ✅ Idempotency check
                             const alreadyRewarded = referrer.priceHistory?.some(
@@ -283,7 +302,7 @@ const handleWebhook = async (req, res) => {
                                 referrer.priceHistory = referrer.priceHistory || [];
                                 referrer.priceHistory.push({
                                     amount: rewardAmount,
-                                    courseType: courseTypeEnum, // ✅ now matches schema
+                                    courseType: courseTypeEnum,  // ✅ always valid
                                     purchasedDate: new Date(),
                                     purchasedBy: user._id,
                                     level: level,
