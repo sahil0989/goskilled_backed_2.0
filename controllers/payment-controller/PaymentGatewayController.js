@@ -181,78 +181,6 @@ const handleWebhook = async (req, res) => {
         if (["SUCCESS", "PAID"].includes(txStatus.toUpperCase())) {
 
             const courses = Array.isArray(paymentRecord.courses) ? paymentRecord.courses : [paymentRecord.courses];
-            const user = await User.findById(paymentRecord.user);
-
-            console.log("✨ Ouside the package...")
-
-            if (user.packageType === "No Course") {
-                user.packageType = paymentRecord.packageType;
-                await user.save();
-
-                console.log("✨ Inside the packange......")
-
-                const rewardConfig = {
-                    "Skill Builder": [900, 150, 75],
-                    "Career Booster": [1250, 250, 150],
-                };
-
-                const rewardArray = rewardConfig[paymentRecord.packageType];
-                if (rewardArray) {
-                    let currentUser = user;
-
-                    for (let level = 1; level <= 3; level++) {
-                        if (!currentUser.referredBy) break;
-
-                        const referrer = await User.findById(currentUser.referredBy);
-                        if (!referrer) break;
-
-                        const levelKey = `level${level}`;
-                        if (!referrer.referralLevels) referrer.referralLevels = {};
-                        if (!referrer.referralLevels[levelKey]) referrer.referralLevels[levelKey] = [];
-
-                        if (!referrer.referralLevels[levelKey].includes(user._id)) {
-                            referrer.referralLevels[levelKey].push(user._id);
-                        }
-
-                        const rewardAmount = rewardArray[level - 1];
-
-                        if (typeof rewardAmount === "number" && rewardAmount > 0) {
-                            // ✅ use the same values your schema expects
-                            const courseTypeEnum = paymentRecord.packageType; // "Skill Builder" or "Career Booster"
-
-                            // ✅ Idempotency check
-                            const alreadyRewarded = referrer.priceHistory?.some(
-                                (h) =>
-                                    h.purchasedBy.toString() === user._id.toString() &&
-                                    h.level === level &&
-                                    h.courseType === courseTypeEnum &&
-                                    h.paymentId?.toString() === paymentRecord._id.toString()
-                            );
-
-                            if (!alreadyRewarded) {
-                                referrer.wallet.balance += rewardAmount;
-                                referrer.wallet.totalEarned += rewardAmount;
-
-                                referrer.priceHistory = referrer.priceHistory || [];
-                                referrer.priceHistory.push({
-                                    amount: rewardAmount,
-                                    courseType: courseTypeEnum, // ✅ now matches schema
-                                    purchasedDate: new Date(),
-                                    purchasedBy: user._id,
-                                    level: level,
-                                    paymentId: paymentRecord._id,
-                                });
-                            }
-                        }
-
-                        await referrer.save();
-
-                        currentUser = referrer;
-                    }
-                }
-            }
-
-            console.log("✨ End of wallet........")
 
             for (const course of courses) {
                 const currentCourse = await Course.findById(course.courseId);
@@ -300,6 +228,81 @@ const handleWebhook = async (req, res) => {
             }
 
             await User.findByIdAndUpdate(paymentRecord.user, updateOps);
+
+            // const user = await User.findById(paymentRecord.user);
+
+            // console.log("✨ Ouside the package...")
+
+            // if (user.packageType === "No Course") {
+            //     user.packageType = paymentRecord.packageType;
+            //     await user.save();
+
+            //     console.log("✨ Inside the packange......")
+
+            //     const rewardConfig = {
+            //         "Skill Builder": [900, 150, 75],
+            //         "Career Booster": [1250, 250, 150],
+            //     };
+
+            //     const rewardArray = rewardConfig[paymentRecord.packageType];
+            //     if (rewardArray) {
+            //         let currentUser = user;
+
+            //         for (let level = 1; level <= 3; level++) {
+            //             if (!currentUser.referredBy) break;
+
+            //             const referrer = await User.findById(currentUser.referredBy);
+            //             if (!referrer) break;
+
+            //             const levelKey = `level${level}`;
+            //             if (!referrer.referralLevels) referrer.referralLevels = {};
+            //             if (!referrer.referralLevels[levelKey]) referrer.referralLevels[levelKey] = [];
+
+            //             if (!referrer.referralLevels[levelKey].includes(user._id)) {
+            //                 referrer.referralLevels[levelKey].push(user._id);
+            //             }
+
+            //             const rewardAmount = rewardArray[level - 1];
+
+            //             if (typeof rewardAmount === "number" && rewardAmount > 0) {
+            //                 // ✅ use the same values your schema expects
+            //                 const courseTypeEnum = paymentRecord.packageType; // "Skill Builder" or "Career Booster"
+
+            //                 // ✅ Idempotency check
+            //                 const alreadyRewarded = referrer.priceHistory?.some(
+            //                     (h) =>
+            //                         h.purchasedBy.toString() === user._id.toString() &&
+            //                         h.level === level &&
+            //                         h.courseType === courseTypeEnum &&
+            //                         h.paymentId?.toString() === paymentRecord._id.toString()
+            //                 );
+
+            //                 if (!alreadyRewarded) {
+            //                     referrer.wallet.balance += rewardAmount;
+            //                     referrer.wallet.totalEarned += rewardAmount;
+
+            //                     referrer.priceHistory = referrer.priceHistory || [];
+            //                     referrer.priceHistory.push({
+            //                         amount: rewardAmount,
+            //                         courseType: courseTypeEnum, // ✅ now matches schema
+            //                         purchasedDate: new Date(),
+            //                         purchasedBy: user._id,
+            //                         level: level,
+            //                         paymentId: paymentRecord._id,
+            //                     });
+            //                 }
+            //             }
+
+            //             await referrer.save();
+
+            //             currentUser = referrer;
+            //         }
+            //     }
+            // }
+
+            // console.log("✨ End of wallet........")
+
+
         }
 
         return res.sendStatus(200);
