@@ -43,28 +43,24 @@ const CourseSchema = new mongoose.Schema({
     },
 
     objectives: String,
-
     students: [StudentSchema],
-
-    heroSection: {
-        features: [String],
-        content: [String],
-    },
-
+    heroSection: { features: [String], content: [String] },
     whyChoose: [String],
     whatYouWillLearn: [String],
     whoIsThisFor: [String],
-
     reviews: [ReviewSchema],
     faqs: [FAQSchema],
     curriculum: [CurriculumModuleSchema],
-
     previewLessonUrl: String,
     tagline: String,
     category: String,
     plan: String,
 
-    isPublished: { type: Boolean, default: false },
+    status: {
+        type: String,
+        enum: ["draft", "live"],
+        default: "draft",
+    },
 });
 
 module.exports = mongoose.model("Course", CourseSchema);

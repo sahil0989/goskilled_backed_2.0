@@ -13,6 +13,8 @@ const addNewCourse = async (req, res) => {
             });
         }
 
+        courseData.status = courseData.status || "draft";
+
         if (typeof courseData.pricing === "string") {
             courseData.pricing = {
                 standard: Number(courseData.pricing.standard),
@@ -47,7 +49,7 @@ const addNewCourse = async (req, res) => {
 
         return res.status(201).json({
             success: true,
-            message: "Course saved successfully",
+            message: `Course ${savedCourse.status === "live" ? "published" : "saved as draft"} successfully`,
             data: savedCourse,
         });
     } catch (error) {
@@ -62,11 +64,17 @@ const addNewCourse = async (req, res) => {
 // Get All Courses
 const getAllCourses = async (req, res) => {
     try {
-        const coursesList = await Course.find({});
-        return res.status(200).json({
-            success: true,
-            data: coursesList,
-        });
+        const { status } = req.query; // optional query param ?status=live or ?status=draft
+
+        // Only add filter if status is provided
+        const filter = {};
+        if (status) {
+            filter.status = status; // 'live' or 'draft'
+        }
+
+        const coursesList = await Course.find(filter);
+
+        return res.status(200).json({ success: true, data: coursesList });
     } catch (error) {
         console.error("Get All Courses Error:", error);
         res.status(500).json({
@@ -116,42 +124,27 @@ const updateCourseByID = async (req, res) => {
         const { id } = req.params;
         const updatedData = req.body;
 
-        if (!id) {
-            return res.status(400).json({
-                success: false,
-                message: "Course ID is required",
-            });
+        if (!id || !updatedData || Object.keys(updatedData).length === 0) {
+            return res.status(400).json({ success: false, message: "Course ID and update data are required" });
         }
 
-        if (!updatedData || Object.keys(updatedData).length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: "Updated course data is required",
-            });
+        // Only allow valid statuses
+        if (updatedData.status && !["draft", "live"].includes(updatedData.status)) {
+            return res.status(400).json({ success: false, message: "Invalid course status" });
         }
 
-        const updatedCourse = await Course.findByIdAndUpdate(id, updatedData, {
-            new: true,
-        });
+        const updatedCourse = await Course.findByIdAndUpdate(id, updatedData, { new: true });
 
-        if (!updatedCourse) {
-            return res.status(404).json({
-                success: false,
-                message: "Course not found",
-            });
-        }
+        if (!updatedCourse) return res.status(404).json({ success: false, message: "Course not found" });
 
         return res.status(200).json({
             success: true,
-            message: "Course updated successfully",
+            message: `Course ${updatedCourse.status === "live" ? "published" : "updated as draft"} successfully`,
             data: updatedCourse,
         });
     } catch (error) {
         console.error("Update Course Error:", error);
-        res.status(500).json({
-            success: false,
-            message: "An error occurred while updating the course.",
-        });
+        res.status(500).json({ success: false, message: "An error occurred while updating the course." });
     }
 };
 

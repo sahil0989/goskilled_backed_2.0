@@ -12,7 +12,7 @@ const getAllStudentViewCourses = async (req, res) => {
     const languages = primaryLanguage ? primaryLanguage.split(",") : [];
 
     // Build filters object conditionally
-    const filters = {};
+    const filters = { status: "live" }; // 🔹 Only live courses
     if (categories.length) filters.category = { $in: categories };
     if (levels.length) filters.level = { $in: levels };
     if (languages.length) filters.primaryLanguage = { $in: languages };
@@ -21,10 +21,10 @@ const getAllStudentViewCourses = async (req, res) => {
     let sortParam = {};
     switch (sortBy.toLowerCase()) {
       case "price-lowtohigh":
-        sortParam.pricing = 1;
+        sortParam["pricing.standard"] = 1;
         break;
       case "price-hightolow":
-        sortParam.pricing = -1;
+        sortParam["pricing.standard"] = -1;
         break;
       case "title-atoz":
         sortParam.title = 1;
@@ -33,7 +33,7 @@ const getAllStudentViewCourses = async (req, res) => {
         sortParam.title = -1;
         break;
       default:
-        sortParam.pricing = 1;
+        sortParam["pricing.standard"] = 1;
         break;
     }
 
