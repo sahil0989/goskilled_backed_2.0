@@ -4,6 +4,7 @@ const Meeting = require('../../models/meeting/Meeting');
 const MeetingRegistration = require('../../models/meeting/MeetingRegistration');
 const WithdrawalRequest = require('../../models/PaymentRequestSchema');
 const Blog = require('../../models/Blogs');
+const Course = require('../../models/Course'); // ✅ import course model
 
 exports.getDashboardMetrics = async (req, res) => {
   try {
@@ -27,18 +28,12 @@ exports.getDashboardMetrics = async (req, res) => {
       { $limit: 10 }
     ]);
 
-    // ✅ Fix KYC status counts (matching your schema enums)
+    // ✅ KYC summary
     const rawKycStatus = await User.aggregate([
       { $group: { _id: "$kycStatus", count: { $sum: 1 } } }
     ]);
 
-    const kycSummary = {
-      not_submitted: 0,
-      pending: 0,
-      approved: 0,
-      rejected: 0
-    };
-
+    const kycSummary = { not_submitted: 0, pending: 0, approved: 0, rejected: 0 };
     rawKycStatus.forEach(item => {
       if (item._id === "not_submitted") kycSummary.not_submitted = item.count;
       else if (item._id === "pending") kycSummary.pending = item.count;
@@ -56,6 +51,11 @@ exports.getDashboardMetrics = async (req, res) => {
         }
       }
     ]);
+
+    // ======== COURSES ========
+    const totalCourses = await Course.countDocuments();
+    const liveCourses = await Course.countDocuments({ status: "live" });
+    const draftCourses = await Course.countDocuments({ status: "draft" });
 
     // ======== MEETINGS ========
     const registrationsPerMeeting = await MeetingRegistration.aggregate([
@@ -190,13 +190,8 @@ exports.getDashboardMetrics = async (req, res) => {
 
     // ======== RESPONSE ========
     res.json({
-      users: { 
-        userStatus, 
-        userPackages, 
-        topReferrers, 
-        kycSummary,  
-        walletStats 
-      },
+      users: { userStatus, userPackages, topReferrers, kycSummary, walletStats },
+      courses: { totalCourses, liveCourses, draftCourses }, // ✅ new section
       meetings: { registrationsPerMeeting, registrationsOverTime, meetingStatus },
       payments: { revenueOverTime, revenueByPackage, paymentMethods, paymentStatus, topCoursesRevenue },
       withdrawals: { withdrawalsOverTime, withdrawalStatus, topWithdrawals, avgWithdrawal },
